@@ -131,11 +131,11 @@ func Parse(filename string, r io.Reader) ([]*Group, error) {
 				return nil, &ErrLine{N: n, Err: err}
 			}
 		case LineTypeCodeBlock:
-
-			if currentRequest == nil {
+			if currentGroup == nil {
 				return nil, &ErrLine{N: n, Err: errUnexpectedCodeblock}
 			}
 
+			// Consume lines until we the end of the code block.
 			var bodyType string
 			if len(line.Bytes) > 3 {
 				bodyType = string(line.Bytes[3:])
@@ -147,12 +147,17 @@ func Parse(filename string, r io.Reader) ([]*Group, error) {
 			if err != nil {
 				return nil, &ErrLine{N: n, Err: err}
 			}
-			if settingExpectations {
-				currentRequest.ExpectedBody = lines
-				currentRequest.ExpectedBodyType = bodyType
-			} else {
-				currentRequest.Body = lines
-				currentRequest.BodyType = bodyType
+
+			// If we are in a request section, update the expected response body
+			// or the request body.
+			if currentRequest != nil {
+				if settingExpectations {
+					currentRequest.ExpectedBody = lines
+					currentRequest.ExpectedBodyType = bodyType
+				} else {
+					currentRequest.Body = lines
+					currentRequest.BodyType = bodyType
+				}
 			}
 
 		case LineTypeDetail:

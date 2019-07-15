@@ -3,7 +3,6 @@ package parse
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 )
@@ -22,7 +21,7 @@ func parseDetail(b []byte, detailregex *regexp.Regexp) (*Detail, error) {
 	}
 	sep := bytes.IndexAny(detail, ":=")
 	if sep == -1 || sep > len(detail)-1 {
-		return nil, errors.New("malformed detail")
+		return nil, fmt.Errorf("malformed detail : %s", detail)
 	}
 	key := clean(detail[0:sep])
 	return &Detail{

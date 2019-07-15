@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"../parse"
 	"github.com/cheekybits/is"
-	"github.com/matryer/silk/parse"
 )
 
 func TestParseLine(t *testing.T) {
@@ -145,8 +145,8 @@ func TestLinesReader(t *testing.T) {
 
 	out, err := ioutil.ReadAll(lines.Reader())
 	is.NoErr(err)
-	is.Equal(string(out), `Line one 
-Line two 
+	is.Equal(string(out), `Line one
+Line two
 Line three`)
 
 }

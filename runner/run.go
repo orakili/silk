@@ -14,8 +14,9 @@ import (
 	"sync"
 	"testing"
 
+	"../parse"
 	"github.com/matryer/m"
-	"github.com/matryer/silk/parse"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 const indent = " "
@@ -221,7 +222,7 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 
 		// depending on the expectedBodyType:
 		// json*: check if expectedBody as JSON is a subset of the actualBody as json
-		// json(exact): check JSON for deep equality (avoids checking diffs in white space and order)
+		// json(strict): check JSON for deep equality (avoids checking diffs in white space and order)
 		// *: check string for verbatim equality
 
 		expectedTypeIsJSON := strings.HasPrefix(req.ExpectedBodyType, "json")
@@ -232,15 +233,40 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 			json.Unmarshal([]byte(exp), &expectedJSON)
 			json.Unmarshal(actualBody, &actualJSON)
 
-			if !strings.Contains(req.ExpectedBodyType, "exact") {
-				eq, err := r.assertJSONIsEqualOrSubset(expectedJSON, actualJSON)
-				if !eq {
-					r.fail(group, req, req.ExpectedBody.Number(), "- body doesn't match", err)
+			// Check that the expected body and the response body match exactly.
+			if strings.Contains(req.ExpectedBodyType, "strict") {
+				if !reflect.DeepEqual(actualJSON, expectedJSON) {
+					r.fail(group, req, req.ExpectedBody.Number(), "- body (strict) doesn't match:")
 					return
 				}
-			} else if !reflect.DeepEqual(actualJSON, expectedJSON) {
-				r.fail(group, req, req.ExpectedBody.Number(), "- body doesn't match")
-				return
+				// Check that the expected body and the response body have the same
+				// structure or that the expected body structure is a subset of the
+				// response body's.
+			} else if strings.Contains(req.ExpectedBodyType, "schema") {
+				schemaLoader := gojsonschema.NewStringLoader(string(exp))
+				documentLoader := gojsonschema.NewStringLoader(string(actualBody))
+
+				result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+				if err != nil {
+					r.fail(group, req, req.ExpectedBody.Number(), "- schema validation failed:", err)
+					return
+				}
+				if !result.Valid() {
+					var b bytes.Buffer
+					for _, desc := range result.Errors() {
+						b.WriteString(fmt.Sprintf("- %s\n", desc))
+					}
+					r.fail(group, req, req.ExpectedBody.Number(), "- response body doesn't match schema:", b.String())
+					return
+				}
+				// Check that the expected body is a subset of the response body with
+				// equal values.
+			} else {
+				eq, err := r.assertJSONIsEqualOrSubset(expectedJSON, actualJSON)
+				if !eq {
+					r.fail(group, req, req.ExpectedBody.Number(), "- body doesn't match:", err)
+					return
+				}
 			}
 		} else if !r.assertBody(actualBody, []byte(exp)) {
 			r.fail(group, req, req.ExpectedBody.Number(), "- body doesn't match")
@@ -383,33 +409,49 @@ func (r *Runner) assertJSONIsEqualOrSubset(v1 interface{}, v2 interface{}) (bool
 		return true, nil
 	}
 
-	// check if both are non nil and that type matches
-	if ((v1 == nil) != (v2 == nil)) ||
-		(reflect.ValueOf(v1).Type() != reflect.ValueOf(v2).Type()) {
+	value1 := reflect.ValueOf(v1)
+	value2 := reflect.ValueOf(v2)
+
+	// Check if both are non nil and that type matches.
+	if v1 == nil || v2 == nil || value1.Kind() != value2.Kind() {
 		return false, fmt.Errorf("types do not match")
 	}
 
-	switch v1.(type) {
-	case map[string]interface{}:
-		// recursively check maps
-		// v2 is of same type as v1 as check in early return
-		v2map := v2.(map[string]interface{})
-		for objK, objV := range v1.(map[string]interface{}) {
-			if v2map[objK] == nil {
-				return false, fmt.Errorf("missing key '%s'", objK)
+	switch value1.Kind() {
+	case reflect.Map:
+		iter := value1.MapRange()
+		for iter.Next() {
+			key := iter.Key()
+			val1 := iter.Value()
+			val2 := value2.MapIndex(key)
+			if !val2.IsValid() {
+				return false, fmt.Errorf("missing key '%s' in response body", key)
 			}
-			equalForKey, errForKey := r.assertJSONIsEqualOrSubset(objV, v2map[objK])
-			if !equalForKey {
-				return false, fmt.Errorf("mismatch for key '%s': %s", objK, errForKey)
+			equal, err := r.assertJSONIsEqualOrSubset(val1.Interface(), val2.Interface())
+			if !equal {
+				return false, fmt.Errorf("mismatch for key '%s': %s", key, err)
 			}
 		}
-
+		return true, nil
+	case reflect.Slice:
+		for i := 0; i < value1.Len(); i++ {
+			val1 := value1.Index(i)
+			val2 := value2.Index(i)
+			if !val2.IsValid() {
+				return false, fmt.Errorf("missing item with index '%d'", i)
+			}
+			equal, err := r.assertJSONIsEqualOrSubset(val1.Interface(), val2.Interface())
+			if !equal {
+				return false, fmt.Errorf("mismatch for item with index '%d': %s", i, err)
+			}
+		}
 		return true, nil
 	default:
-		// all non-map types must be deep equal
+		// All non-map/slice types must be deep equal.
 		if !reflect.DeepEqual(v1, v2) {
 			return false, fmt.Errorf("values do not match - %s != %s", v1, v2)
 		}
+		// Return true as we already checked that the values are of the same type.
 		return true, nil
 	}
 }

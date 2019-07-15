@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"../parse"
+	"../runner"
+	"../testutil"
 	"github.com/cheekybits/is"
-	"github.com/matryer/silk/parse"
-	"github.com/matryer/silk/runner"
-	"github.com/matryer/silk/testutil"
 )
 
 func TestTInter(t *testing.T) {
