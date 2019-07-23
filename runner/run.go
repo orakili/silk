@@ -32,6 +32,8 @@ type T interface {
 type Runner struct {
 	t       T
 	rootURL string
+	user    string
+	pass    string
 	vars    map[string]*parse.Value
 	// DoRequest makes the request and returns the response.
 	// By default uses http.DefaultClient.Do.
@@ -43,16 +45,16 @@ type Runner struct {
 	Log func(string)
 	// Verbose is the function that logs verbose debug information.
 	Verbose func(...interface{})
-	// NewRequest makes a new http.Request. By default, uses http.NewRequest.
-	NewRequest func(method, urlStr string, body io.Reader) (*http.Request, error)
 }
 
 // New makes a new Runner with the given testing T target and the
 // root URL.
-func New(t T, URL string) *Runner {
+func New(t T, URL string, user string, pass string) *Runner {
 	r := &Runner{
 		t:         t,
 		rootURL:   URL,
+		user:      user,
+		pass:      pass,
 		vars:      make(map[string]*parse.Value),
 		DoRequest: http.DefaultTransport.RoundTrip,
 		Log: func(s string) {
@@ -64,8 +66,7 @@ func New(t T, URL string) *Runner {
 			}
 			fmt.Println(args...)
 		},
-		ParseBody:  ParseJSONBody,
-		NewRequest: http.NewRequest,
+		ParseBody: ParseJSONBody,
 	}
 	// capture environment variables by default
 	for _, e := range os.Environ() {
@@ -73,6 +74,17 @@ func New(t T, URL string) *Runner {
 		r.vars[pair[0]] = parse.ParseValue([]byte(pair[1]))
 	}
 	return r
+}
+
+func (r *Runner) NewRequest(method, urlStr string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, urlStr, body)
+	if err == nil {
+		// Add basic authentication credentials.
+		if r.user != "" && r.pass != "" {
+			req.SetBasicAuth(r.user, r.pass)
+		}
+	}
+	return req, err
 }
 
 func (r *Runner) log(args ...interface{}) {

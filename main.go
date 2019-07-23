@@ -11,6 +11,8 @@ import (
 var (
 	showVersion = flag.Bool("version", false, "show version and exit")
 	url         = flag.String("silk.url", "", "(required) target url")
+	user        = flag.String("silk.user", "", "(optional) username for basic authentication")
+	pass        = flag.String("silk.pass", "", "(optional) password for basic authentication")
 	help        = flag.Bool("help", false, "show help")
 	paths       []string
 )
@@ -37,7 +39,7 @@ func main() {
 }
 
 func testFunc(t *testing.T) {
-	r := runner.New(t, *url)
+	r := runner.New(t, *url, *user, *pass)
 	fmt.Println("silk: running", len(paths), "file(s)...")
 	r.RunGlob(paths, nil)
 }
