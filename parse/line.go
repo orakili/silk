@@ -126,6 +126,7 @@ const (
 	LineTypeDetail
 	LineTypeSeparator
 	LineTypeParam
+	LineTypeFile
 )
 
 var lineTypeStrs = map[LineType]string{
@@ -136,6 +137,7 @@ var lineTypeStrs = map[LineType]string{
 	LineTypeDetail:       "detail",
 	LineTypeSeparator:    "separator",
 	LineTypeParam:        "param",
+	LineTypeFile:         "file",
 }
 
 func (l LineType) String() string {
@@ -171,6 +173,10 @@ var matchTypes = []struct {
 	// * ?param=value
 	R:    "^\\s*\\* `?\\?(.*=?.*)`?",
 	Type: LineTypeParam,
+}, {
+	// * Content-Type: application/json
+	R:    "^\\s*\\* \\[.*\\]\\((.*)\\)",
+	Type: LineTypeFile,
 }, {
 	// * Content-Type: application/json
 	R:    "^\\s*\\* (.*)",

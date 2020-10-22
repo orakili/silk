@@ -35,6 +35,8 @@ type Request struct {
 	Params   Lines
 	Body     Lines
 	BodyType string
+	// Binary file to upload.
+	File []byte
 	//===
 	ExpectedBody     Lines
 	ExpectedBodyType string
@@ -181,6 +183,16 @@ func Parse(filename string, r io.Reader) ([]*Group, error) {
 				return nil, &ErrLine{N: n, Err: errUnexpectedParams}
 			}
 			currentRequest.Params = append(currentRequest.Params, line)
+		case LineTypeFile:
+			if currentRequest == nil && currentGroup == nil {
+				return nil, &ErrLine{N: n, Err: errUnexpectedDetails}
+			}
+			if currentRequest != nil {
+				matches := line.Regexp.FindSubmatch(line.Bytes)
+				if currentRequest.File, err = getok(matches, 1); err != nil {
+					return nil, &ErrLine{N: n, Err: err}
+				}
+			}
 		case LineTypeSeparator:
 			settingExpectations = true
 		}

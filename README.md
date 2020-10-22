@@ -83,6 +83,14 @@ Adding parameters to the path (like `GET /path?q=something`) can be tricky, espe
 * ?param=value
 ```
 
+#### File upload (optional)
+
+You may specify a file to upload:
+
+```
+* [Some text](path/to/the/file/to/upload.ext)
+```
+
 The parameters will be correctly added to the URL path before the request is made.
 
 #### Cookies
@@ -164,7 +172,37 @@ allowing for differences in whitespace and ordering as well as being lenient tow
     }
     ```
 
-You can use the flag `json(strict)` to enforce that no additional fields may be present while still allowing for differences in whitespace and key order.
+You can use the flag `json (strict)` to enforce that no additional fields may be present while still allowing for differences in whitespace and key order.
+
+You can also use the flag `json (schema)` to validate the response against a
+[JSON schema](http://json-schema.org/):
+
+    ```json (schema)
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "definitions": {
+        "language": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": ["integer", "string"],
+              "description": "ID of the language resource"
+            },
+            "name": {
+              "type": "string",
+              "description": "name of the language resource"
+            },
+            "code": {
+              "type": "string",
+              "description": "ISO2 code of the language resource"
+            }
+          },
+          "required": ["id", "name", "code"]
+        }
+      }
+    }
+    ```
 
 You may also make any number of regex assertions against the body using the `Body` object:
 
@@ -220,6 +258,11 @@ Notes:
 
 * Omit trailing slash from `endpoint`
 * `{testfiles}` can include a pattern (e.g. `/path/*.silk.md`) as this is expended by most terminals to a list of matching files
+
+### Basic authentication
+
+Username and password can be provided via the `-silk.user` and `-silk.pass`
+command line options.
 
 ## Golang
 

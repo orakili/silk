@@ -139,9 +139,30 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 	r.Verbose(string(req.Method), absPath)
 	var body io.Reader
 	var bodyStr string
+	var bodyLen int64
+	var contentType string
+	// Use the request body if defined.
 	if len(req.Body) > 0 {
 		bodyStr = r.resolveVars(req.Body.String())
+		bodyLen = int64(len(bodyStr))
 		body = strings.NewReader(bodyStr)
+		// Otherwise check if there is mention of a binary file to upload.
+	} else if len(req.File) > 0 {
+		f, err := os.Open(string(req.File))
+		if err != nil {
+			r.log("invalid file to upload: ", err)
+			r.t.FailNow()
+			return
+		}
+		contentType, err = r.getFileContentType(f)
+		if err != nil {
+			r.log("unable to determine the type of the file to upload: ", err)
+			r.t.FailNow()
+			return
+		}
+		defer f.Close()
+		// Note: os.File implements io.Reader.
+		body = f
 	}
 	// make request
 	httpReq, err := r.NewRequest(m, absPath, body)
@@ -150,11 +171,16 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 		r.t.FailNow()
 		return
 	}
-	// set body
-	bodyLen := len(bodyStr)
+	// Set the body size header.
 	if bodyLen > 0 {
-		httpReq.ContentLength = int64(bodyLen)
+		httpReq.ContentLength = bodyLen
 	}
+
+	// Set the content type.
+	if contentType != "" {
+		httpReq.Header.Add("Content-Type", contentType)
+	}
+
 	// set request headers
 	for _, line := range req.Details {
 		detail := line.Detail()
@@ -177,11 +203,17 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 	httpReq.URL.RawQuery = q.Encode()
 
 	// print request body
-	if bodyLen > 0 {
+	if bodyStr != "" {
 		r.Verbose("```")
 		r.Verbose(bodyStr)
 		r.Verbose("```")
 	}
+
+	// Print the file to upload.
+	if len(req.File) > 0 {
+		r.Verbose("Uploading file: " + string(req.File))
+	}
+
 	// perform request
 	httpRes, err := r.DoRequest(httpReq)
 	if err != nil {
@@ -471,4 +503,20 @@ func (r *Runner) assertJSONIsEqualOrSubset(v1 interface{}, v2 interface{}) (bool
 func (r *Runner) capture(key string, val interface{}) {
 	r.vars[key] = &parse.Value{Data: val}
 	r.Verbose("captured", key, "=", val)
+}
+
+func (r *Runner) getFileContentType(f *os.File) (string, error) {
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := make([]byte, 512)
+	_, err := f.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Use the net/http package's handy DectectContentType function. Always
+	// returns a valid content-type by returning "application/octet-stream"
+	// if no others seemed to match.
+	contentType := http.DetectContentType(buffer)
+
+	return contentType, nil
 }
