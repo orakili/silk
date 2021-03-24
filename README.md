@@ -58,6 +58,13 @@ Examples include:
 
 ```
 
+**Note:** It is also possible to use an absolute URL:
+
+```
+## GET http://example.test/people
+
+```
+
 #### Request body (optional)
 
 To specify a request body (for example for `POST` requests) use a codeblock using backtics (` ``` `):

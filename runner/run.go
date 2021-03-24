@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -76,11 +77,12 @@ func New(t T, URL string, user string, pass string) *Runner {
 	return r
 }
 
-func (r *Runner) NewRequest(method, urlStr string, body io.Reader) (*http.Request, error) {
+func (r *Runner) NewRequest(method, urlStr string, body io.Reader, relative bool) (*http.Request, error) {
 	req, err := http.NewRequest(method, urlStr, body)
 	if err == nil {
-		// Add basic authentication credentials.
-		if r.user != "" && r.pass != "" {
+		// Add basic authentication credentials but only for paths relative
+		// to the root URL passed as parameter.
+		if relative && r.user != "" && r.pass != "" {
 			req.SetBasicAuth(r.user, r.pass)
 		}
 	}
@@ -132,15 +134,36 @@ func (r *Runner) runGroup(group *parse.Group) {
 }
 
 func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
-	m := string(req.Method)
-	p := string(req.Path)
-	absPath := r.resolveVars(r.rootURL + p)
+	m := r.resolveVars(string(req.Method))
+	p := r.resolveVars(string(req.Path))
+
+	// Parse the URL so that we can check if it's absolute.
+	url, err := url.Parse(p)
+	if err != nil {
+		r.log("unable to parse path: ", err)
+		r.t.FailNow()
+		return
+	}
+
+	relative := false
+	absPath := ""
+
+	// If the URL is relative, prepend the root URL.
+	if !url.IsAbs() {
+		absPath = r.rootURL + p
+		relative = true
+	} else {
+		absPath = p
+	}
+
 	m = r.resolveVars(m)
 	r.Verbose(string(req.Method), absPath)
+
 	var body io.Reader
 	var bodyStr string
 	var bodyLen int64
 	var contentType string
+
 	// Use the request body if defined.
 	if len(req.Body) > 0 {
 		bodyStr = r.resolveVars(req.Body.String())
@@ -165,7 +188,7 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 		body = f
 	}
 	// make request
-	httpReq, err := r.NewRequest(m, absPath, body)
+	httpReq, err := r.NewRequest(m, absPath, body, relative)
 	if err != nil {
 		r.log("invalid request: ", err)
 		r.t.FailNow()
@@ -188,7 +211,7 @@ func (r *Runner) runRequest(group *parse.Group, req *parse.Request) {
 		val = r.resolveVars(val)
 		detail.Value = parse.ParseValue([]byte(val))
 		r.Verbose(indent, detail.String())
-		httpReq.Header.Add(detail.Key, val)
+		httpReq.Header.Set(detail.Key, val)
 	}
 	// set parameters
 	q := httpReq.URL.Query()
@@ -512,6 +535,9 @@ func (r *Runner) getFileContentType(f *os.File) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Rewind to begining of the file.
+	f.Seek(0, io.SeekStart)
 
 	// Use the net/http package's handy DectectContentType function. Always
 	// returns a valid content-type by returning "application/octet-stream"
