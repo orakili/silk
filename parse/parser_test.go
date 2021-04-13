@@ -3,8 +3,8 @@ package parse_test
 import (
 	"testing"
 
-	"../parse"
 	"github.com/cheekybits/is"
+	"silk/parse"
 )
 
 func TestParser(t *testing.T) {

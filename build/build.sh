@@ -6,11 +6,11 @@ LOC=`pwd`/../
 HERE="build/release"
 LASTCOMMIT=`git rev-parse HEAD`
 LASTCOMMITSHORT=`git rev-parse --short HEAD`
-echo "Building https://github.com/matryer/silk/commit/$LASTCOMMIT..."
+echo "Building commit: $LASTCOMMIT..."
 
 cd $LOC
 rm -rf $HERE
-mkdir $HERE
+mkdir -p $HERE
 VERSION=`cat version.go | grep version | awk -F'"' '{print $2}'`
 echo "Version: $VERSION"
 
@@ -19,7 +19,7 @@ function build {
 	echo "    (building)"
 	thisdir=silk-$VERSION-$1-$2
 	GOOS=$1 GOARCH=$2 go build -o $HERE/$dir/$thisdir/silk
-	echo "Version $VERSION - https://github.com/matryer/silk/commit/$LASTCOMMIT" > $HERE/$dir/$thisdir/README.md
+	echo "Version $VERSION - commit: $LASTCOMMIT" > $HERE/$dir/$thisdir/README.md
 	echo "    (compressing)"
 	cd $HERE
 	zip $thisdir.zip $thisdir/*
@@ -39,7 +39,7 @@ build darwin amd64
 #build linux 386
 build linux amd64
 #build linux arm
-build linux arm64
+#build linux arm64
 #build linux ppc64
 #build linux ppc64le
 #build netbsd 386
@@ -52,6 +52,6 @@ build linux arm64
 #build plan9 amd64
 #build solaris amd64
 #build windows 386
-build windows amd64
+#build windows amd64
 
 echo "All done."

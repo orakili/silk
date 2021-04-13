@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"../parse"
-	"../runner"
-	"../testutil"
 	"github.com/cheekybits/is"
+	"silk/parse"
+	"silk/runner"
+	"silk/testutil"
 )
 
 func TestTInter(t *testing.T) {
@@ -25,7 +25,7 @@ func TestRunGroupSuccess(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	g, err := parse.ParseFile("../testfiles/success/echo.success.silk.md")
 	is.NoErr(err)
 	r.RunGroup(g...)
@@ -37,7 +37,7 @@ func TestRunFileSuccess(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/echo.success.silk.md")
 	is.False(subT.Failed())
 }
@@ -48,7 +48,7 @@ func TestIssue31(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/issue-31.silk.md")
 	is.False(subT.Failed())
 }
@@ -61,7 +61,7 @@ func TestCapturedVars(t *testing.T) {
 	defer s.Close()
 	os.Setenv("$EnvStatus", "awesome")
 	os.Setenv("$AppNameFromEnv", "Silk")
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/captured-vars.silk.md")
 	is.False(subT.Failed())
 }
@@ -73,7 +73,7 @@ func TestStandardSeparator(t *testing.T) {
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
 	os.Setenv("$AppNameFromEnv", "Silk")
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/issue-37.silk.md")
 	is.False(subT.Failed())
 }
@@ -84,7 +84,7 @@ func TestFailureNonTrimmedExpection(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoDataHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	var logs []string
 	r.Log = func(s string) {
 		logs = append(logs, s)
@@ -105,7 +105,7 @@ func TestData(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoDataHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/data.silk.md")
 	is.False(subT.Failed())
 }
@@ -115,7 +115,7 @@ func TestBodyField(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoDataHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/body-as-field.silk.md")
 	is.False(subT.Failed())
 }
@@ -125,7 +125,7 @@ func TestRunFileSuccessNoBody(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/echo.nobody.success.silk.md")
 	is.False(subT.Failed())
 }
@@ -135,7 +135,7 @@ func TestFailureWrongBody(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	var logs []string
 	r.Log = func(s string) {
 		logs = append(logs, s)
@@ -160,7 +160,7 @@ func TestFailureWrongHeader(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	var logs []string
 	r.Log = func(s string) {
 		logs = append(logs, s)
@@ -181,7 +181,7 @@ func TestGlob(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.Log = func(s string) {} // don't bother logging
 	r.RunGlob(filepath.Glob("../testfiles/failure/echo.*.silk.md"))
 	is.True(subT.Failed())
@@ -192,7 +192,7 @@ func TestCookies(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	r.RunFile("../testfiles/success/cookies.silk.md")
 	is.False(subT.Failed())
 }
@@ -202,7 +202,7 @@ func TestFailureFieldsSameType(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	var logs []string
 	r.Log = func(s string) {
 		logs = append(logs, s)
@@ -221,7 +221,7 @@ func TestFailureFieldsDifferentTypes(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	var logs []string
 	r.Log = func(s string) {
 		logs = append(logs, s)
@@ -240,7 +240,7 @@ func TestRunJsonModesSuccess(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoRawHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	g, err := parse.ParseFile("../testfiles/success/echoraw.success.jsonmodes.silk.md")
 	is.NoErr(err)
 	r.RunGroup(g...)
@@ -252,7 +252,7 @@ func TestRunJsonModesFailure(t *testing.T) {
 	subT := &testT{}
 	s := httptest.NewServer(testutil.EchoRawHandler())
 	defer s.Close()
-	r := runner.New(subT, s.URL)
+	r := runner.New(subT, s.URL, "", "")
 	g, err := parse.ParseFile("../testfiles/failure/echoraw.failure.jsonmodes.silk.md")
 	is.NoErr(err)
 	r.RunGroup(g...)

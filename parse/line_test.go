@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"../parse"
 	"github.com/cheekybits/is"
+	"silk/parse"
 )
 
 func TestParseLine(t *testing.T) {

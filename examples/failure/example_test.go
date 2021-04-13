@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	example "github.com/matryer/silk/examples/failure"
+	example "silk/examples/failure"
 )
 
 func TestHello(t *testing.T) {

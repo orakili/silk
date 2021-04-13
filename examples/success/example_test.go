@@ -4,8 +4,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	example "github.com/matryer/silk/examples/success"
-	"github.com/matryer/silk/runner"
+	example "silk/examples/success"
+	"silk/runner"
 )
 
 func TestHello(t *testing.T) {
@@ -16,6 +16,6 @@ func TestHello(t *testing.T) {
 
 	// make a new runner using the server URL as the target
 	// and run the test file.
-	runner.New(t, server.URL).RunFile("hello.silk.md")
+	runner.New(t, server.URL, "", "").RunFile("hello.silk.md")
 
 }

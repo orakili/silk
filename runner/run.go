@@ -15,9 +15,9 @@ import (
 	"sync"
 	"testing"
 
-	"../parse"
 	"github.com/matryer/m"
 	"github.com/xeipuuv/gojsonschema"
+	"silk/parse"
 )
 
 const indent = " "
@@ -77,6 +77,8 @@ func New(t T, URL string, user string, pass string) *Runner {
 	return r
 }
 
+// NewRequest extends the http.NewRequest adding the basic authentication if
+// defined.
 func (r *Runner) NewRequest(method, urlStr string, body io.Reader, relative bool) (*http.Request, error) {
 	req, err := http.NewRequest(method, urlStr, body)
 	if err == nil {

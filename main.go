@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"./runner"
+	"silk/runner"
 )
 
 var (
